@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Menu, Download, Play, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 export default function HomePage() {
   const [prevScrollPos, setPrevScrollPos] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [scrollY, setScrollY] = useState(0);
+  const parallaxRef = useRef<HTMLDivElement>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,19 +19,81 @@ export default function HomePage() {
 
       setVisible(isScrollingUp || currentScrollPos < 10);
       setPrevScrollPos(currentScrollPos);
+      setScrollY(window.scrollY);
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [prevScrollPos]);
 
+  // Debounce function to limit scroll handler calls
+  const debounce = (func: (...args: any[]) => any, delay: number) => {
+    let timeoutId: NodeJS.Timeout | number | undefined;
+    return (...args: any[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        func(...args);
+      }, delay);
+    };
+  };
+
+  // Effect to handle vertical scroll and update currentSlide
+  useEffect(() => {
+    const handleVerticalScrollControl = () => {
+      if (!carouselRef.current) return;
+
+      // Use the parent section for scroll calculations
+      const section = carouselRef.current.closest('section');
+      if (!section) return;
+
+      const sectionRect = section.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      // Calculate vertical scroll progress within the section (0 to 1)
+      const scrollProgress = Math.max(0, Math.min(1, (viewportHeight - sectionRect.top) / (sectionRect.height)));
+
+      // Map progress to slide index (0 to 4)
+      const slideIndex = Math.floor(scrollProgress * 5);
+
+      // Clamp slideIndex to be between 0 and 4
+      setCurrentSlide(Math.max(0, Math.min(4, slideIndex)));
+    };
+
+    const debouncedScrollHandler = debounce(handleVerticalScrollControl, 10);
+
+    // Add event listener to window for vertical scrolling
+    window.addEventListener("scroll", debouncedScrollHandler);
+
+    // Cleanup function to remove event listener on component unmount
+    return () => {
+      window.removeEventListener("scroll", debouncedScrollHandler);
+    };
+  }, [debounce, carouselRef]); // Dependencies
+
+  // Add CSS to hide the scrollbar (optional, keep if you want dots only)
+  const style = `
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  `;
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header - now only visible when scrolling up */}
+    <div className="min-h-screen bg-white font-helvetica">
+      <style>{style}</style>
+      <style jsx>{`
+        .font-helvetica {
+          font-family: helvetica, sans-serif;
+        }
+      `}</style>
+      {/* Header */}
       <header
-        className={`flex items-center justify-between p-6 lg:px-80 sticky top-0 bg-white/80 backdrop-blur-sm z-50 transition-transform duration-300 ${
-          visible ? "translate-y-0" : "-translate-y-full"
-        }`}
+        className={`flex items-center justify-between p-6 lg:px-80 sticky top-0 bg-white/80 backdrop-blur-sm z-50 transition-transform duration-300 ${visible ? "translate-y-0" : "-translate-y-full"
+          }`}
       >
         <Button variant="ghost" size="icon" className="lg:hidden">
           <Menu className="h-6 w-6" />
@@ -40,454 +106,455 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-3">
-  <span className="text-xl font-medium">Log in</span>
-  <img
-    src="./insta-logo.png"
-    alt="Instagram Logo"
-    className="w-16 h-16 object-contain p-4" // Adjusted size & object-fit
-  />
-</div>
+          <span className="text-xl font-medium hidden lg:block">Log in</span>
+          <img
+            src="./insta-logo.png"
+            alt="Instagram Logo"
+            className="w-16 h-16 object-contain p-4"
+          />
+        </div>
       </header>
 
       {/* Hero Section */}
-      <section className="px-6 lg:px-12 py-12 lg:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-center max-w-7xl mx-auto">
-          <div className="space-y-8">
+      <section className="px-6 lg:px-12 py-12 lg:py-14">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-24  max-w-7xl mx-auto">
+          <div className="space-y-8 ml-4 lg:ml-0 lg:hidden">
             <h1 className="text-5xl lg:text-7xl xl:text-8xl font-normal leading-tight tracking-tight text-black">
-              Bringing you closer to the people
+              Bringing you closer to the <br/> people
             </h1>
           </div>
 
           <div className="relative">
-            <div className="aspect-square rounded-full overflow-hidden max-w-md mx-auto lg:ml-auto lg:mr-0">
-              <Image 
-                src="https://scontent.fdac177-1.fna.fbcdn.net/v/t39.8562-6/387722956_7378458712178487_1775710954647878208_n.webp?_nc_cat=106&ccb=1-7&_nc_sid=f537c7&_nc_ohc=4hjeR8K_VvUQ7kNvwFxTAYP&_nc_oc=AdmlJ5_LKGZT0apbIK9mmkBGaGfdixp2ug--COAstNrTaLCIfoWNoWyS5hwVDfJLi9Q&_nc_zt=14&_nc_ht=scontent.fdac177-1.fna&_nc_gid=6JmaC_BnseBvQAvQDTmtog&oh=00_AfKO3-H4pJFQBhYIaUgDvsvjH9O91kEufxDZV-TkTo2Bcw&oe=6837EAE0"
+            <div className=" overflow-hidden w-40 ml-auto max-w-md lg:w-auto lg:ml-auto lg:mr-0 lg:max-w-md border-4 border-white/20 ">
+              <Image
+                src="/orange-haired.webp"
                 alt="Person with orange hair in pink checkered top making hand gestures"
                 width={400}
                 height={400}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
+              {/* Optional gradient overlay */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-transparent via-transparent to-black/20 pointer-events-none" />
             </div>
           </div>
         </div>
 
-        <div className="mt-24 lg:mt-32 grid lg:grid-cols-2 gap-12 lg:gap-24 items-end max-w-7xl mx-auto">
+        <div className="lg:text-right mt-3 sm:mt-0 ml-4 lg:ml-0 lg:hidden">
+          <h2 className="text-3xl lg:text-7xl xl:text-8xl font-normal leading-tight tracking-tight">
+            <span className="text-pink-500">and things</span>
+            <br/>
+            <span className="text-violet-500">you love</span>
+          </h2>
+        </div>
+
+        <div className="mt-24 lg:mt-42 grid lg:grid-cols-2 gap-12 lg:gap-24 items-end max-w-7xl mx-auto">
           <div className="relative">
-            <div className="aspect-square max-w-sm">
+            <div className="aspect-square w-40 mr-auto max-w-sm lg:w-auto lg:mr-0 lg:max-w-sm">
               <Image
-                src="https://scontent.fdac177-1.fna.fbcdn.net/v/t39.8562-6/387146343_617196437155293_2327283482117678195_n.webp?_nc_cat=108&ccb=1-7&_nc_sid=f537c7&_nc_ohc=F65q_gEycyUQ7kNvwFX6Q6a&_nc_oc=Adm0wljbkCdiUxjlJDFoPrIE_Thzw3qi1XdEEDUltKbdbYmLpU7G9HNaWMrT0CPfXqs&_nc_zt=14&_nc_ht=scontent.fdac177-1.fna&_nc_gid=6JmaC_BnseBvQAvQDTmtog&oh=00_AfJb_Rn2fDdKgoz8FwqGtg3wiiahnQH8z52h2egEmr-rBw&oe=6837D1D2"
+                src="/white-tshirt-man.webp"
                 alt="Partial view of person"
-                width={300}
-                height={300}
+                width={548.56}
+                height={738.06}
                 className="w-full h-full object-cover rounded-lg"
               />
+
+              <div className="mt-20 py-16 flex items-center justify-center">
+                <div className="animate-pulse animate-bounce">
+                  <img
+                    src="./arrow-down.png"
+                    alt="Scroll down"
+                    width={80}
+                    height={80}
+                    className="w-20 h-20 filter drop-shadow-xl hover:scale-125 transition-all duration-300"
+                  />
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div className="lg:text-right">
+          {/* <div className="lg:text-right">
             <h2 className="text-5xl lg:text-7xl xl:text-8xl font-normal leading-tight tracking-tight">
               <span className="text-pink-500">and things</span>
               <br />
               <span className="text-violet-500">you love</span>
             </h2>
+          </div> */}
+        </div>
+        <div className="relative">
+          <div className="aspect-[16/9] overflow-hidden max-w-md mx-auto my-56  lg:mx-0 lg:ml-auto">
+            <Image
+              src="./landscapephotoforInsta.webp"
+              alt="Three girls taking a photo from above in a landscape"
+              width={800}
+              height={451.92}
+              className="w-full h-full object-cover" />
+
           </div>
         </div>
+
       </section>
 
-      {/* Sticky Transition Section */}
-      <div className="relative">
-        {/* Sticky Container */}
-        <div className="sticky top-0 h-screen overflow-hidden">
-          <div className="relative h-full">
-            {/* Background Image */}
-            <div className="absolute inset-0">
+      <div className="relative h-[170vh] overflow-hidden">
+        {/* Sticky container that holds all parallax elements */}
+        <div className="sticky top-0 h-screen w-full overflow-hidden">
+          {/* Background Layer (moves slowest) */}
+          <div
+            className="absolute inset-0"
+            style={{
+              transform: `translateY(${scrollY * 0.05}px)`,
+              transition: "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+              willChange: "transform"
+            }}
+          >
+            {/* Inner container for rotation */}
+            <div className="absolute inset-0" style={{ transform: 'rotate(90deg)' }}>
               <Image
-                src="https://scontent.fdac177-1.fna.fbcdn.net/v/t39.8562-6/387041588_1173432146946550_7707432751021130960_n.webp?_nc_cat=110&ccb=1-7&_nc_sid=f537c7&_nc_ohc=lkz_v4IUMMkQ7kNvwE2t49x&_nc_oc=AdnDLRTyqS4Vq0nmhLPjU_EXjr2ISKH2gvZ75hkouD52QqdewHhgXOcUIjRxqdsDGEU&_nc_zt=14&_nc_ht=scontent.fdac177-1.fna&_nc_gid=6JmaC_BnseBvQAvQDTmtog&oh=00_AfK4YM2JaFvqezbinayiaJkqxi90QwOpVOiQz5RoDetfVw&oe=6837EF3B"
-                alt="Community of diverse people using Instagram"
-                width={1920}
-                height={1080}
-                className="w-full h-full object-cover"
+                src="/community-background.webp"
+                alt="Community background"
+                fill
+                className="object-cover"
+                priority
               />
-              <div className="absolute inset-0 bg-black/40"></div>
             </div>
+            <div className="absolute inset-0 bg-black/40"></div>
+          </div>
 
-            {/* Sliding Text Content */}
-            <div className="relative z-10 h-full flex items-center justify-center">
-              <div className="text-center text-white px-6 max-w-4xl mx-auto">
-                <h3 className="text-4xl lg:text-6xl xl:text-7xl font-normal leading-tight mb-8">
-                  {"We're committed to fostering a safe and supportive community for everyone"}
-                </h3>
-                <div className="flex items-center justify-center gap-4 text-xl lg:text-2xl">
-                  <span>Community</span>
-                  <ArrowRight className="h-6 w-6 lg:h-8 lg:w-8" />
-                </div>
-              </div>
+          {/* Mid Layer (moves medium speed) */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{
+              transform: `translateY(${scrollY * 0.3}px)`,
+              transition: "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+              willChange: "transform"
+            }}
+          >
+            <div className="relative w-full h-full">
+              {/* You can add additional visual elements here that move at medium speed */}
             </div>
+          </div>
 
-            {/* Scroll Indicator */}
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white">
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-px h-12 bg-white/50"></div>
-                <div className="w-2 h-2 rounded-full bg-white animate-bounce"></div>
+          {/* Fixed Content Layer (doesn't move) */}
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="text-center text-white px-6 max-w-2xl mx-auto">
+              <h3 className="text-4xl lg:text-6xl xl:text-7xl font-normal leading-tight mb-8">
+                {"We're committed to fostering a safe and supportive community for everyone"}
+              </h3>
+              <div className="flex items-center justify-center gap-4 text-xl lg:text-2xl">
+                <span>Community</span>
+                <ArrowRight className="h-6 w-6 lg:h-8 lg:w-8" />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Spacer for scroll effect */}
-        <div className="h-screen"></div>
+          {/* Scroll Indicator */}
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white z-20">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-px h-12 bg-white/50"></div>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white animate-bounce"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Community Safety Section */}
-      <section className="px-6 lg:px-12 py-24 lg:py-32 bg-white relative z-20">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-24 items-center">
-            <div>
-              <h3 className="text-4xl lg:text-6xl font-normal leading-tight text-black mb-8">
-                Building a safer community
-              </h3>
-              <p className="text-s text-gray-600 leading-relaxed mb-8 ">
-                We're working to make Instagram a place where everyone feels safe to express themselves. Our community
-                guidelines help create a positive environment for all users.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-2 h-2 rounded-full bg-pink-500"></div>
-                  <span className="text-lg text-gray-700">Anti-bullying measures</span>
+      {/* Spacer to ensure smooth transition */}
+      <div className="h-32"></div>
+
+      {/* START: New Sliding Section - Vertical scroll controls horizontal slide (Option B) */}
+      {/* This section is intentionally tall to allow vertical scroll to control horizontal slides */}
+      <section className="px-6 lg:px-12 py-24 lg:py-32 bg-white min-h-[160vh]"> {/* Section tall enough for vertical scroll */}
+        <div className="max-w-4xl mx-auto"> {/* Center content area */}
+          {/* Slider Content Area - Overflow hidden to only show one slide horizontally at a time */}
+          <div className="overflow-hidden"> {/* Hide horizontal overflow */}
+            {/* Flex container that holds all slides and moves horizontally based on currentSlide */}
+            <div
+              ref={carouselRef} // Ref attached to the horizontally moving flex container
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }} // Controlled by state from vertical scroll
+            >
+              {/* Content for each slide (each slide is a flex item in the row) */}
+              {[...Array(5)].map((_, index) => (
+                <div key={index} className="w-full flex-shrink-0 flex flex-col lg:flex-row items-center lg:justify-center px-16 py-12 lg:py-0 gap-25"> {/* Layout for text left / media right within the slide */}
+                  {/* Text Content (Left Column within slide) */}
+                  <div className="w-full lg:w-1/2 text-center lg:text-left"> {/* Removed flex and alignment for dots */}
+                    <h2 className="text-3xl lg:text-4xl font-bold mb-4 text-gray-900"> {/* Reverted mb to mb-4 */}
+                      {index === 0 ? "Explore What's New" : index === 1 ? "Discover Reels" : index === 2 ? "Watch Stories" : index === 3 ? "Have a conversation" : "Find something new"}
+                    </h2>
+                    <p className="text-lg lg:text-xl text-gray-700 leading-relaxed">
+                      {index === 0 ? "Our continuously evolving features empower you to express yourself in new ways." : index === 1 ? "Create, share, and watch short, entertaining videos on Instagram." : index === 2 ? "Check out Stories and live videos from your favorite people." : index === 3 ? "Send messages, photos and videos to a friend or select group of people." : "Discover content and creators based on your interests."}
+                    </p>
+                  </div>
+                  {/* Media Container (Right Column within slide) */}
+                  <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
+                    {/* Conditional rendering based on index and file type */}
+                    {index === 0 ? (
+                      <Image
+                        src="/slide-1.webp"
+                        alt="Explore What's New visual"
+                        width={500} // Example width, adjust as needed
+                        height={300} // Example height, adjust as needed
+                        objectFit="cover"
+                        className="rounded-lg shadow-md"
+                      />
+                    ) : index === 1 ? (
+                      <video
+                        src="/slide-2.mp4"
+                        controls
+                        loop
+                        muted
+                        autoPlay
+                        playsInline
+                        className="rounded-lg shadow-md w-full h-auto object-cover"
+                      />
+                    ) : index === 2 ? (
+                      <video
+                        src="/slide-3.mp4"
+                        controls
+                        loop
+                        muted
+                        autoPlay
+                        playsInline
+                        className="rounded-lg shadow-md w-full h-auto object-cover"
+                      />
+                    ) : index === 3 ? (
+                      <video
+                        src="/slide-4.mp4"
+                        controls
+                        loop
+                        muted
+                        autoPlay
+                        playsInline
+                        className="rounded-lg shadow-md w-full h-auto object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src="/slide-5.png"
+                        alt="Find something new visual"
+                        width={500} // Example width, adjust as needed
+                        height={300} // Example height, adjust as needed
+                        objectFit="cover"
+                        className="rounded-lg shadow-md"
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-2 h-2 rounded-full bg-pink-500"></div>
-                  <span className="text-lg text-gray-700">Content moderation</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-2 h-2 rounded-full bg-pink-500"></div>
-                  <span className="text-lg text-gray-700">Mental health resources</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-2 h-2 rounded-full bg-pink-500"></div>
-                  <span className="text-lg text-gray-700">Privacy controls</span>
-                </div>
-              </div>
+              ))}
             </div>
-            <div className="relative">
-              <div className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100">
-                <Image
-                  src="/placeholder.svg?height=500&width=500"
-                  alt="Instagram safety features interface"
-                  width={500}
-                  height={500}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
+          </div>
+          {/* Navigation Dots Container - Below the slides */}
+          <div className="flex justify-center mt-8 space-x-2"> {/* Centered below slides */}
+            {[...Array(5)].map((_, index) => (
+              <button
+                key={`dot-${index}`}
+                className={`w-3 h-3 rounded-full ${currentSlide === index ? 'bg-blue-500' : 'bg-gray-300'
+                  } focus:outline-none transition-colors`}
+                onClick={() => {
+                  // Scroll the window vertically to the corresponding part of the section
+                  if (carouselRef.current) {
+                    const section = carouselRef.current.closest('section');
+                    if (section) {
+                      const sectionTop = section.offsetTop;
+                      const sectionHeight = section.offsetHeight;
+                      // Calculate target scroll based on slide index - maps 0-4 index to a vertical scroll position within the section
+                      // Adjust the targetScroll calculation slightly to center the section in the viewport if possible
+                      const targetScroll = sectionTop + (sectionHeight / 5) * index - window.innerHeight / 3;
+                      window.scrollTo({
+                        top: targetScroll,
+                        behavior: 'smooth' // Smooth scrolling effect
+                      });
+                    }
+                  }
+                }}
+              ></button>
+            ))}
+          </div>
+        </div>
+      </section>
+      {/* END: New Sliding Section */}
+
+
+      {/* New Two-Image Section - Layout like the original reference image */}
+      <section className="px-6 lg:px-12 py-12 lg:py-20 bg-white relative overflow-hidden"> {/* Reduced top and bottom padding */}
+        <div className="max-w-7xl mx-auto h-[500px] lg:h-[600px] flex flex-col lg:flex-row gap-4"> {/* Container with fixed height for positioning context */}
+          {/* First Image (Left) - Positioned relatively within the section */}
+          <div className="relative w-full lg:w-2/3 h-1/2 lg:h-full"> {/* Occupies left space */}
+            <Image
+              src="/cowboy hat.webp"
+              alt="Image resembling man with cowboy hat"
+              fill // Fill the parent div
+              className="object-cover rounded-lg shadow-md"
+            />
+          </div>
+
+          {/* Second Image (Top Right) - Positioned absolutely relative to the section */}
+          <div className="absolute top-1/4 right-4 lg:right-16 w-1/2 lg:w-1/4 h-1/2 lg:h-2/3"> {/* Positioned top right */}
+            {/* Note: Using the same path, please replace with the actual path for the second image if different */}
+            <Image
+              src="/girl-toung.webp"
+              alt="Image resembling woman with towel"
+              fill // Fill the parent div
+              className="object-cover rounded-lg shadow-md"
+            />
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="px-6 lg:px-12 py-24 lg:py-32 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-12 lg:gap-24">
-            <div className="text-center">
-              <div className="text-6xl lg:text-7xl font-light text-black mb-4">2B+</div>
-              <p className="text-lg text-gray-600">Monthly active users</p>
+
+
+      {/* grow with US section */}
+      <div className="max-w-7xl mx-auto px-6 py-16 lg:py-24">
+        <div className="flex flex-col items-center gap-12 lg:grid lg:grid-cols-2 lg:gap-12 lg:items-center">
+          {/* Text Content */}
+          <div className="order-2 lg:order-1 text-left">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+              Grow with us
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-400 mb-13">
+              Share and grow your brand with our diverse, global community.
+            </p>
+            <div className="flex items-center gap-2 ml-0">
+              <a
+                href="#"
+                className="flex items-center text-4xl font-semibold text-black-600 py-10"
+              >
+                Business
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-4 h-10 w-10"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </a>
             </div>
-            <div className="text-center">
-              <div className="text-6xl lg:text-7xl font-light text-black mb-4">500M+</div>
-              <p className="text-lg text-gray-600">Daily active users</p>
-            </div>
-            <div className="text-center">
-              <div className="text-6xl lg:text-7xl font-light text-black mb-4">95M+</div>
-              <p className="text-lg text-gray-600">Photos shared daily</p>
+          </div>
+
+          {/* Image on the right */}
+          <div className="order-1 lg:order-2 justify-self-end">
+            <div className="rounded-xl overflow-hidden w-[173.59px] h-[379.44px] border border-red-500 mx-auto lg:w-[282.97px] lg:h-[617.01px] lg:border-2 lg:border-red-500">
+              <Image
+                src="./grow-with-us.jpg"
+                alt="Business growth illustration"
+                width={685}
+                height={151}
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Features Section */}
-      <section className="px-6 lg:px-12 py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-24 items-center mb-32">
-            <div>
-              <h3 className="text-4xl lg:text-6xl font-normal leading-tight text-black mb-8">Share your story</h3>
-              <p className="text-xl text-gray-600 leading-relaxed">
-                From everyday moments to life's highlights, share it all with your friends and followers. Express
-                yourself with photos, videos, Stories, and Reels.
-              </p>
-            </div>
-            <div className="relative">
-              <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
-                <Image
-                  src="/placeholder.svg?height=500&width=400"
-                  alt="Instagram Stories interface"
-                  width={400}
-                  height={500}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
+      {/* Download Section on different stores */}
 
-          <div className="grid lg:grid-cols-2 gap-24 items-center mb-32">
-            <div className="lg:order-2">
-              <h3 className="text-4xl lg:text-6xl font-normal leading-tight text-black mb-8">Discover new interests</h3>
-              <p className="text-xl text-gray-600 leading-relaxed">
-                Explore content from creators you love and discover new accounts that share your passions. From cooking
-                to travel, find inspiration everywhere.
-              </p>
-            </div>
-            <div className="relative lg:order-1">
-              <div className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-yellow-100 to-orange-100">
-                <Image
-                  src="/placeholder.svg?height=400&width=400"
-                  alt="Instagram Explore page"
-                  width={400}
-                  height={400}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
+      <div className="text-center pt-[48px] pb-[19px] lg:pb-[412px]">
+        <p className="font-semibold text-gray-900 mb-8 lg:text-6xl" style={{ fontSize: 'calc(48px + (16 * ((100vw - 375px) / 1225)))' }}>Download for iOS/Android</p>
+        <div className="flex flex-row justify-center items-center gap-6"> {/* the two icon's horezontal gaps or sizing */}
+          {/* iOS Download Image/Button (Placeholder) */}
+          <img src="./appstore.svg" alt="Download on the App Store" className="w-40 h-12" /> {/* Example size, adjust as needed */}
 
-          <div className="grid lg:grid-cols-2 gap-24 items-center">
-            <div>
-              <h3 className="text-4xl lg:text-6xl font-normal leading-tight text-black mb-8">Connect with friends</h3>
-              <p className="text-xl text-gray-600 leading-relaxed">
-                Stay in touch with the people who matter most. Send messages, share posts, and keep up with what your
-                friends are doing.
-              </p>
-            </div>
-            <div className="relative">
-              <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br from-green-100 to-blue-100">
-                <Image
-                  src="/placeholder.svg?height=500&width=400"
-                  alt="Instagram Direct messages"
-                  width={400}
-                  height={500}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Android Download Image/Button (Placeholder) */}
+          <img src="./getitongoogleplay.webp" alt="Get it on Google Play" className="w-40 h-12" /> {/* Specified size */}
         </div>
-      </section>
+      </div>
 
-      {/* Download Section */}
-      <section className="px-6 lg:px-12 py-24 lg:py-32 bg-white-500 text-white">
-        <div className="max-w-7xl mx-auto text-center">
-         <p className="text-6xl text-gray-800 mb-12  mx-auto">
-       
-      
-          Download for iOS/Android.
-          </p>
- 
- <div className="px-6">
-
-
-<div className ="w-full p-4 text-center bg-white  rounded-lg shadow-sm sm:p-8 dark:bg-gray-800 dark:border-gray-700">
-    {/* <h5 className ="mb-2 text-3xl font-bold text-gray-900 dark:text-white">Work fast from anywhere</h5> */}
-    {/* <p className ="mb-5 text-base text-gray-500 sm:text-lg dark:text-gray-400">Stay up to date and move work forward with Flowbite on iOS & Android. Download the app today.</p> */}
-    <div className ="items-center justify-center space-y-4 sm:flex sm:space-y-0 sm:space-x-4 rtl:space-x-reverse">
-        <a href="#" className ="w-full sm:w-auto bg-gray-800 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 text-white rounded-lg inline-flex items-center justify-center px-4 py-2.5 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:ring-gray-700">
-            <svg className ="me-3 w-7 h-7" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="apple" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"></path></svg>
-            <div className ="text-left rtl:text-right">
-                <div className ="mb-1 text-xs">Download on the</div>
-                <div className ="-mt-1 font-sans text-sm font-semibold">Mac App Store</div>
-            </div>
-        </a>
-        <a href="#"className ="w-full sm:w-auto bg-gray-800 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 text-white rounded-lg inline-flex items-center justify-center px-4 py-2.5 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:ring-gray-700">
-            <svg className ="me-3 w-7 h-7" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google-play" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"></path></svg>
-            <div className ="text-left rtl:text-right">
-                <div className ="mb-1 text-xs">Get in on</div>
-                <div className ="-mt-1 font-sans text-sm font-semibold">Google Play</div>
-            </div>
-        </a>
-    </div>
-</div>
-
- </div>
-
-
-         
-        </div>
-      </section>
+      {/* Spacer after Download Section */}
+      <div className="h-[112px] lg:h-102"></div>
 
       {/* Footer */}
-
-      
       <footer className="px-6 lg:px-12 py-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-6 gap-6 mb-12">
-            <div>
-              <h4 className="font-semibold text-black mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400  text-xs">
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Blog
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Jobs
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    News
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-black mb-4">Community</h4>
-              <ul className="space-y-2 text-gray-400  text-xs">
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Guidelines
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Support
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Safety
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Tips
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-black mb-4">Developers</h4>
-              <ul className="space-y-2 text-gray-400  text-xs">
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    API
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Tools
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Resources
-                  </a>
-                </li>
-              </ul>
-            </div>
-          <div>
-              <h4 className="font-semibold text-black mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400  text-xs">
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Privacy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Terms
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Cookies
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Contact
-                  </a>
-                </li>
-              </ul>
+        <div className="max-w-6xl mx-auto p-3">
+          <div className="flex flex-row justify-center items-center gap-6 mb-12 md:grid md:grid-cols-6 md:gap-2">
+            {/* Left Column: Our Story, Meta, Features (visible on all screen sizes) */}
+            <div className="flex flex-col gap-y-3 sm:w-1/2 md:contents">
+              {/* Our Story */}
+              <div>
+                <h4 className="font-semibold text-black mb-2 text-xl md:text-base">Our Story</h4>                <ul className="space-y-1 text-gray-400 text-xs sm:text-sm hidden md:block">                  <li><a href="#" className="hover:text-black transition-colors">About</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Blog</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Jobs</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">News</a></li>
+                </ul>
+              </div>
+              {/* Meta */}
+              <div>
+                <h4 className="font-semibold text-black mb-2 text-xl md:text-base">Meta</h4>                <ul className="space-y-1 text-gray-400 text-xs sm:text-sm hidden md:block">                  <li><a href="#" className="hover:text-black transition-colors">Guidelines</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Support</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Safety</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Tips</a></li>
+                </ul>
+              </div>
+              {/* Features */}
+              <div>
+                <h4 className="font-semibold text-black mb-2 text-xl md:text-base">Features</h4>                <ul className="space-y-1 text-gray-400 text-xs sm:text-sm hidden md:block">                  <li><a href="#" className="hover:text-black transition-colors">Documentation</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">API</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Tools</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Resources</a></li>
+                </ul>
+              </div>
             </div>
 
-            
-
-
-            <div >
-              <h4 className="font-semibold text-black mb-4">Threads</h4>
-              <ul className="space-y-2 text-strong-black">
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Edits <img src="./right-up.png" className="inline-block w-4 h-4" alt="edit icon"/></a>
-                    {/* <a href="https://www.flaticon.com/free-icons/arrows" title="arrows icons"></a> */}
-                  
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Business
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Creators
-                  </a>
-                </li>
-                <li>
-                 
-                </li>
-              </ul>
+            {/* Right Column: safety and Threads (visible on all screen sizes) */}
+            <div className="flex flex-col gap-y-3 sm:w-1/2 md:contents">
+              {/* Safety */}
+              <div>
+                <h4 className="font-semibold text-black mb-2 text-xl md:text-base">safety</h4>                <ul className="space-y-1 text-gray-400 text-xs sm:text-sm hidden md:block">                  <li><a href="#" className="hover:text-black transition-colors">Privacy</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Terms</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Cookies</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Contact</a></li>
+                </ul>
+              </div>
+              {/* Threads */}
+              <div>
+                <h4 className="font-semibold text-black mb-2 text-xl md:text-base">Threads</h4>                <ul className="space-y-1 text-strong-black text-xs sm:text-sm hidden md:block">                  <li><a href="#" className="hover:text-black transition-colors">Edits <img src="./right-up.png" className="inline-block w-4 h-4" alt="edit icon" /></a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Business</a></li>
+                  <li><a href="#" className="hover:text-black transition-colors">Creators</a></li>
+                </ul>
+              </div>
             </div>
 
-
-
-            <div >
-              <h4 className="font-semibold text-black mb-4">Developers</h4>
+            {/* Developers (hidden below md) */}
+            <div className="hidden md:block md:col-span-1"> {/* Hide on mobile, occupy one grid column on md and up */}              <h4 className="font-semibold text-black mb-4">Developers</h4>
               <ul className="space-y-2 text-gray-600">
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    API
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Tools
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-black transition-colors">
-                    Resources
-                  </a>
-                </li>
+                <li><a href="#" className="hover:text-black transition-colors">Documentation</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">API</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Tools</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Resources</a></li>
               </ul>
+            </div>
+          </div>
+
+          <div className="flex justify-center mt-12">
+            <div className="flex gap-4">
+              <img src="./instagram.png" alt="Instagram" className="w-10 h-10 lg:w-7 lg:h-7" />
+              <img src="./facebook.png" alt="Facebook" className="w-10 h-10 lg:w-7 lg:h-7" />
+              <img src="./threads.png" alt="Threads" className="w-10 h-10 lg:w-7 lg:h-7" />
+              <img src="./youtube.png" alt="YouTube" className="w-10 h-10 lg:w-7 lg:h-7" />
+              <img src="./twitter.png" alt="Twitter" className="w-10 h-10 lg:w-7 lg:h-7" />
+              <img src="./linkedin.png" alt="LinkedIn" className="w-10 h-10 lg:w-7 lg:h-7" />
+            </div>
+          </div> <div className=" ">
+            <div className="flex justify-center  mt-20  gap-6  text-gray-400  text-xs">
+
+              <p>English(US)</p>
+
+              <p>Instagram from Meta</p>
+              <p>API</p>
+              <p>Privacy</p>
+              <p>Terms</p>
+              <p>Sitemaps</p>
+
             </div>
 
           </div>
-         
-         <div className=" flex gap-4 w-9 h-9 mt-12 mb-20"> 
-               
-               <div>  <img src="./instagram.png" alt="" /> 
-                      <img src="./threads.png" alt="" /> </div>
-              
-          
-            </div>
-        
+
         </div>
       </footer>
     </div>
-    
   )
 }
